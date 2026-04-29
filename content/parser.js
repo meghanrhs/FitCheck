@@ -19,6 +19,20 @@ function parseListingText(str) {
 }
 
 function _extractMeasurements(text) {
-  // Implemented in Task 3
-  return {};
+  // Full implementation added in Task 3.
+  // Minimal subset here to make normalization tests verifiable.
+  const result = {};
+  const UNITS = '(?:"|\'\'|in(?:ch(?:es)?)?)';
+  const simple = [
+    { label: 'chest', key: 'chest' },
+    { label: 'waist', key: 'waist' },
+  ];
+  for (const { label, key } of simple) {
+    const m = text.match(new RegExp(`${label}[:\\s]+?(\\d+(?:\\.\\d+)?)\\s*${UNITS}?`, 'i'));
+    if (m) {
+      const val = parseFloat(m[1]);
+      if (val > 0) result[key] = val;
+    }
+  }
+  return result;
 }
