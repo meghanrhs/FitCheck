@@ -339,7 +339,7 @@
 
       select.onchange = async () => {
         await setStorage({ activeProfileId: select.value });
-        if (_lastScanResult) renderMain(_lastScanResult, select.value);
+        if (_lastScanResult) await renderMain(_lastScanResult, select.value);
       };
 
       return activeProfileId || profiles[0]?.id || null;
@@ -355,60 +355,6 @@
     document.getElementById('btn-back').addEventListener('click', () => {
       showView(_lastView);
     });
-
-    // ── Startup ───────────────────────────────────────────────────────────────
-    async function startup() {
-      showView('loading');
-
-      const activeProfileId = await initProfileDropdown();
-      const { profiles = [] } = await getStorage();
-
-      if (profiles.length === 0) {
-        showView('settings');
-        renderSettings();
-        return;
-      }
-
-      let responded = false;
-
-      const timer = setTimeout(() => {
-        if (responded) return;
-        responded = true;
-        _lastView = 'empty';
-        showView('empty');
-        initEmptyView();
-      }, 2000);
-
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        if (!tabs[0]) {
-          clearTimeout(timer);
-          if (!responded) { responded = true; _lastView = 'empty'; showView('empty'); initEmptyView(); }
-          return;
-        }
-
-        chrome.tabs.sendMessage(tabs[0].id, { type: 'scan' }, response => {
-          if (chrome.runtime.lastError || !response) {
-            clearTimeout(timer);
-            if (!responded) { responded = true; _lastView = 'empty'; showView('empty'); initEmptyView(); }
-            return;
-          }
-
-          clearTimeout(timer);
-          if (responded) return;
-          responded = true;
-          _lastScanResult = response;
-
-          const hasMeasurements = Object.keys(response.measurements || {}).length > 0;
-          if (hasMeasurements) {
-            renderMain(response, activeProfileId);
-          } else {
-            _lastView = 'empty';
-            showView('empty');
-            initEmptyView();
-          }
-        });
-      });
-    }
 
     // ── Main view ─────────────────────────────────────────────────────────────
     async function renderMain(scanResult, activeProfileId) {
@@ -464,6 +410,60 @@
 
       _lastView = 'main';
       showView('main');
+    }
+
+    // ── Startup ───────────────────────────────────────────────────────────────
+    async function startup() {
+      showView('loading');
+
+      const activeProfileId = await initProfileDropdown();
+      const { profiles = [] } = await getStorage();
+
+      if (profiles.length === 0) {
+        showView('settings');
+        renderSettings();
+        return;
+      }
+
+      let responded = false;
+
+      const timer = setTimeout(() => {
+        if (responded) return;
+        responded = true;
+        _lastView = 'empty';
+        showView('empty');
+        initEmptyView();
+      }, 2000);
+
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        if (!tabs[0]) {
+          clearTimeout(timer);
+          if (!responded) { responded = true; _lastView = 'empty'; showView('empty'); initEmptyView(); }
+          return;
+        }
+
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'scan' }, response => {
+          if (chrome.runtime.lastError || !response) {
+            clearTimeout(timer);
+            if (!responded) { responded = true; _lastView = 'empty'; showView('empty'); initEmptyView(); }
+            return;
+          }
+
+          clearTimeout(timer);
+          if (responded) return;
+          responded = true;
+          _lastScanResult = response;
+
+          const hasMeasurements = Object.keys(response.measurements || {}).length > 0;
+          if (hasMeasurements) {
+            renderMain(response, activeProfileId);
+          } else {
+            _lastView = 'empty';
+            showView('empty');
+            initEmptyView();
+          }
+        });
+      });
     }
 
     startup();
