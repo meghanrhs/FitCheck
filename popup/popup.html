@@ -456,6 +456,123 @@
       };
     }
 
+    // ── Settings ──────────────────────────────────────────────────────────────
+    async function renderSettings() {
+      const { profiles = [], activeProfileId } = await getStorage();
+      const profileList = document.getElementById('profile-list');
+      profileList.innerHTML = '';
+
+      const selectedId = _editingProfileId || activeProfileId;
+
+      profiles.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'profile-card' + (p.id === selectedId ? ' selected' : '');
+
+        const count    = Object.keys(p.measurements || {}).length;
+        const isActive = p.id === activeProfileId;
+        card.innerHTML = `
+          <div>
+            <div class="p-name">${p.name}</div>
+            <div class="p-meta">${isActive ? 'active · ' : ''}${count} measurement${count !== 1 ? 's' : ''}</div>
+          </div>
+          ${!isActive ? `<button class="btn-delete" data-id="${p.id}" aria-label="Delete profile">🗑</button>` : ''}
+        `;
+
+        card.addEventListener('click', e => {
+          if (e.target.classList.contains('btn-delete')) return;
+          _editingProfileId = p.id;
+          renderSettings();
+        });
+
+        profileList.appendChild(card);
+      });
+
+      // Delete buttons
+      profileList.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const id      = e.currentTarget.dataset.id;
+          const updated = profiles.filter(p => p.id !== id);
+          if (_editingProfileId === id) _editingProfileId = null;
+          await setStorage({ profiles: updated, activeProfileId });
+          renderSettings();
+          initProfileDropdown();
+        });
+      });
+
+      // Measurement editor for selected profile
+      const selected     = profiles.find(p => p.id === selectedId);
+      const measureLabel = document.getElementById('measure-section-label');
+      const editList     = document.getElementById('measure-edit-list');
+      const addRow       = document.getElementById('add-measure-row');
+      const addForm      = document.getElementById('add-measure-form');
+
+      if (!selected) {
+        measureLabel.style.display = 'none';
+        editList.innerHTML = '';
+        addRow.style.display = 'none';
+        addForm.classList.remove('visible');
+        return;
+      }
+
+      measureLabel.textContent = `${selected.name}'s measurements`;
+      measureLabel.style.display = 'block';
+      addRow.style.display = 'block';
+      editList.innerHTML = '';
+
+      const measurements = selected.measurements || {};
+      Object.entries(measurements).forEach(([key, val]) => {
+        const row = document.createElement('div');
+        row.className = 'measure-edit-row';
+        row.innerHTML = `
+          <label>${key}</label>
+          <input type="number" min="1" max="100" step="0.5" value="${val}" data-key="${key}">
+          <span class="unit">"</span>
+        `;
+        row.querySelector('input').addEventListener('change', async e => {
+          const v = parseFloat(e.target.value);
+          if (isNaN(v) || v <= 0) return;
+          selected.measurements[key] = v;
+          await setStorage({ profiles, activeProfileId });
+        });
+        editList.appendChild(row);
+      });
+
+      // Add-measurement inline form
+      addRow.onclick = () => {
+        addForm.classList.add('visible');
+        Array.from(document.getElementById('new-key').options).forEach(opt => {
+          opt.hidden = measurements[opt.value] !== undefined;
+        });
+      };
+
+      document.getElementById('btn-save-measure').onclick = async () => {
+        const key = document.getElementById('new-key').value;
+        const val = parseFloat(document.getElementById('new-val').value);
+        if (isNaN(val) || val <= 0) return;
+        selected.measurements       = selected.measurements || {};
+        selected.measurements[key]  = val;
+        await setStorage({ profiles, activeProfileId });
+        addForm.classList.remove('visible');
+        document.getElementById('new-val').value = '';
+        renderSettings();
+      };
+    }
+
+    // New profile button
+    document.getElementById('btn-new-profile').addEventListener('click', async () => {
+      const name = prompt('Profile name:');
+      if (!name?.trim()) return;
+      const id = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const { profiles = [], activeProfileId } = await getStorage();
+      if (profiles.find(p => p.id === id)) { alert('A profile with that name already exists.'); return; }
+      profiles.push({ id, name: name.trim(), measurements: {} });
+      await setStorage({ profiles, activeProfileId: activeProfileId || id });
+      _editingProfileId = id;
+      renderSettings();
+      initProfileDropdown();
+    });
+
     // ── Startup ───────────────────────────────────────────────────────────────
     async function startup() {
       showView('loading');
