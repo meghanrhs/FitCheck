@@ -137,7 +137,7 @@
     .btn:hover { background: #333; }
 
     /* ── Settings ── */
-    .settings-body { padding: 14px; }
+    .settings-body { padding: 14px; max-height: 540px; overflow-y: auto; }
     .settings-header {
       display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
     }
@@ -211,7 +211,7 @@
     </div>
     <div class="header-right">
       <select id="profile-select"></select>
-      <button class="settings-btn" id="btn-settings">⚙</button>
+      <button class="settings-btn" id="btn-settings" aria-label="Settings">⚙</button>
     </div>
   </header>
 
@@ -260,7 +260,7 @@
     <div class="settings-body">
       <div class="settings-header">
         <div style="display:flex;align-items:center;gap:10px">
-          <button class="btn-back" id="btn-back">←</button>
+          <button class="btn-back" id="btn-back" aria-label="Back">←</button>
           <h2>Settings</h2>
         </div>
         <button class="btn-new-profile" id="btn-new-profile">+ New profile</button>
@@ -294,8 +294,10 @@
 
     // ── View switching ────────────────────────────────────────────────────────
     function showView(name) {
+      const target = document.getElementById(`view-${name}`);
+      if (!target) { console.error(`showView: no view named "${name}"`); return; }
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-      document.getElementById(`view-${name}`).classList.add('active');
+      target.classList.add('active');
     }
 
     // ── Script continues in Tasks 8–11 ────────────────────────────────────────
