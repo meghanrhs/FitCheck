@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "FitCheck",
+  "version": "0.1.0",
+  "description": "Compare secondhand listing measurements against your saved body measurements.",
+  "permissions": ["storage", "activeTab"],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.svg",
+      "48": "icons/icon48.svg",
+      "128": "icons/icon128.svg"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.depop.com/*",
+        "*://www.ebay.com/*",
+        "*://www.poshmark.com/*",
+        "*://www.etsy.com/*",
+        "*://www.vinted.com/*"
+      ],
+      "js": ["content/sites.js", "content/parser.js", "content/content.js"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  }
+}
