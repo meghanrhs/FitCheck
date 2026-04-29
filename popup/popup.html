@@ -491,11 +491,12 @@
       profileList.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async e => {
           e.stopPropagation();
-          const id      = e.currentTarget.dataset.id;
-          const updated = profiles.filter(p => p.id !== id);
+          const id = e.currentTarget.dataset.id;
+          const { profiles: current, activeProfileId: currentActiveId } = await getStorage();
+          const updated = current.filter(p => p.id !== id);
           if (_editingProfileId === id) _editingProfileId = null;
-          await setStorage({ profiles: updated, activeProfileId });
-          renderSettings();
+          await setStorage({ profiles: updated, activeProfileId: currentActiveId });
+          await renderSettings();
           initProfileDropdown();
         });
       });
@@ -550,12 +551,13 @@
         const key = document.getElementById('new-key').value;
         const val = parseFloat(document.getElementById('new-val').value);
         if (isNaN(val) || val <= 0) return;
-        selected.measurements       = selected.measurements || {};
-        selected.measurements[key]  = val;
+        selected.measurements = selected.measurements || {};
+        if (selected.measurements[key] !== undefined) return;
+        selected.measurements[key] = val;
         await setStorage({ profiles, activeProfileId });
         addForm.classList.remove('visible');
         document.getElementById('new-val').value = '';
-        renderSettings();
+        await renderSettings();
       };
     }
 
