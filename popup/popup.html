@@ -410,6 +410,62 @@
       });
     }
 
+    // ── Main view ─────────────────────────────────────────────────────────────
+    async function renderMain(scanResult, activeProfileId) {
+      const { profiles = [] } = await getStorage();
+      const profile = profiles.find(p => p.id === activeProfileId);
+
+      if (!profile) {
+        _lastView = 'empty'; showView('empty'); initEmptyView(); return;
+      }
+
+      const listing = scanResult.measurements || {};
+      const body    = profile.measurements || {};
+
+      const comparisons = CANONICAL
+        .filter(key => listing[key] !== undefined && body[key] !== undefined)
+        .map(key => ({ key, profileVal: body[key], listingVal: listing[key] }));
+
+      if (comparisons.length === 0) {
+        _lastView = 'empty'; showView('empty'); initEmptyView(); return;
+      }
+
+      // Verdict banner
+      const verdict = overallVerdict(comparisons);
+      const banner  = document.getElementById('verdict-banner');
+      banner.className = `verdict-banner verdict-${verdict.verdict}`;
+
+      const icons = { fits: '✓', 'wont-fit': '✗', check: '?' };
+      document.getElementById('verdict-icon').textContent = icons[verdict.verdict] ?? '?';
+      document.getElementById('verdict-text').textContent = verdict.label;
+      const passCount = comparisons.filter(c => compareMeasurement(c.profileVal, c.listingVal).verdict === 'fit').length;
+      document.getElementById('verdict-sub').textContent =
+        verdict.note || `${passCount} of ${comparisons.length} measurements pass`;
+
+      // Measurement grid
+      const grid = document.getElementById('measurement-grid');
+      grid.innerHTML = '';
+      comparisons.forEach(c => {
+        const r   = compareMeasurement(c.profileVal, c.listingVal);
+        const row = document.createElement('div');
+        row.className = 'measurement-row';
+        row.innerHTML = `
+          <span class="m-name">${c.key}</span>
+          <span class="m-values">you ${c.profileVal}" vs <strong>${c.listingVal}"</strong></span>
+          <span class="badge badge-${r.verdict}">${r.label}</span>
+        `;
+        grid.appendChild(row);
+      });
+
+      // Footer
+      const parts = [scanResult.site, scanResult.itemTitle ? `"${scanResult.itemTitle}"` : null]
+        .filter(Boolean);
+      document.getElementById('listing-footer').textContent = parts.join(' · ');
+
+      _lastView = 'main';
+      showView('main');
+    }
+
     startup();
   </script>
 
