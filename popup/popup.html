@@ -3,9 +3,303 @@
 <head>
   <meta charset="UTF-8">
   <title>FitCheck</title>
-  <style>body { width: 360px; margin: 0; font-family: system-ui, sans-serif; }</style>
+  <script src="../content/parser.js"></script>
+  <script src="../content/fit.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 360px;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      background: #f8f8f8;
+      color: #111;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      background: #fff; border-bottom: 1px solid #e5e5e5;
+    }
+    .header-left { display: flex; align-items: center; gap: 7px; }
+    .logo-mark   { width: 20px; height: 20px; }
+    .wordmark    { font-weight: 700; font-size: 12px; letter-spacing: .06em; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    #profile-select {
+      font-size: 11px; padding: 3px 8px;
+      border: 1px solid #ddd; border-radius: 12px;
+      background: #f3f3f3; color: #333; cursor: pointer; outline: none;
+    }
+    .settings-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: #888; padding: 0 2px; line-height: 1;
+    }
+    .settings-btn:hover { color: #333; }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Loading ── */
+    .loading-body {
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px; color: #aaa; font-size: 12px; gap: 8px;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #ddd; border-top-color: #999;
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Verdict banner ── */
+    .verdict-banner {
+      margin: 10px; padding: 12px 14px; border-radius: 8px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .verdict-icon { font-size: 18px; }
+    .verdict-text { font-weight: 700; font-size: 13px; }
+    .verdict-sub  { font-size: 10px; margin-top: 1px; }
+
+    .verdict-fits      { background: #d1fae5; }
+    .verdict-fits      .verdict-text { color: #065f46; }
+    .verdict-fits      .verdict-sub  { color: #047857; }
+    .verdict-check     { background: #fef9c3; }
+    .verdict-check     .verdict-text { color: #713f12; }
+    .verdict-check     .verdict-sub  { color: #92400e; }
+    .verdict-wont-fit  { background: #fee2e2; }
+    .verdict-wont-fit  .verdict-text { color: #991b1b; }
+    .verdict-wont-fit  .verdict-sub  { color: #b91c1c; }
+
+    /* ── Measurement grid ── */
+    .section-label {
+      font-size: 9px; color: #999; text-transform: uppercase;
+      letter-spacing: .06em; padding: 0 14px; margin-bottom: 4px;
+    }
+    .measurement-grid {
+      display: flex; flex-direction: column; gap: 3px; padding: 0 10px;
+    }
+    .measurement-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #fff; border: 1px solid #e5e5e5; border-radius: 6px; padding: 6px 10px;
+    }
+    .m-name   { font-size: 11px; font-weight: 500; color: #333; width: 80px; text-transform: capitalize; }
+    .m-values { font-size: 11px; color: #666; flex: 1; text-align: center; }
+    .m-values strong { color: #111; }
+
+    /* ── Badges ── */
+    .badge {
+      font-size: 9px; font-weight: 700; padding: 2px 8px;
+      border-radius: 10px; letter-spacing: .02em;
+    }
+    .badge-fit   { background: #d1fae5; color: #065f46; }
+    .badge-roomy { background: #fef3c7; color: #92400e; }
+    .badge-snug  { background: #fef3c7; color: #92400e; }
+    .badge-big   { background: #dbeafe; color: #1e3a8a; }
+    .badge-tight { background: #fee2e2; color: #991b1b; }
+
+    /* ── Footer ── */
+    .listing-footer {
+      font-size: 9px; color: #aaa;
+      text-align: center; padding: 10px 14px 12px;
+    }
+
+    /* ── Empty state ── */
+    .empty-body { padding: 14px; }
+    .empty-message { text-align: center; color: #888; font-size: 12px; padding: 16px 0 14px; }
+    .manual-section {
+      background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
+      padding: 12px; margin-bottom: 10px;
+    }
+    .manual-section h4 { font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #333; }
+    .manual-section textarea {
+      width: 100%; height: 72px; font-size: 11px;
+      border: 1px solid #ddd; border-radius: 5px; padding: 6px 8px;
+      resize: none; font-family: inherit;
+    }
+    .manual-section textarea:focus { outline: 1px solid #999; }
+    .parse-error { font-size: 10px; color: #991b1b; margin-top: 4px; display: none; }
+    .manual-form { display: flex; flex-direction: column; gap: 4px; }
+    .manual-form-row { display: flex; align-items: center; gap: 6px; }
+    .manual-form-row label { font-size: 11px; color: #555; width: 80px; text-transform: capitalize; }
+    .manual-form-row input {
+      width: 72px; font-size: 11px;
+      border: 1px solid #ddd; border-radius: 5px; padding: 4px 6px; font-family: inherit;
+    }
+    .manual-form-row input:focus { outline: 1px solid #999; }
+    .manual-form-row .unit { font-size: 11px; color: #999; }
+    .btn {
+      width: 100%; margin-top: 8px; padding: 7px;
+      font-size: 11px; font-weight: 600; background: #111; color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; letter-spacing: .02em;
+    }
+    .btn:hover { background: #333; }
+
+    /* ── Settings ── */
+    .settings-body { padding: 14px; }
+    .settings-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+    }
+    .settings-header h2 { font-size: 14px; font-weight: 700; }
+    .btn-back {
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: #666; padding: 0; line-height: 1;
+    }
+    .btn-new-profile {
+      font-size: 10px; font-weight: 600; padding: 4px 10px;
+      background: #f3f3f3; border: 1px solid #ddd; border-radius: 12px;
+      cursor: pointer; color: #333;
+    }
+    .btn-new-profile:hover { background: #e8e8e8; }
+    .profile-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+    .profile-card {
+      background: #fff; border: 1px solid #e5e5e5; border-radius: 7px;
+      padding: 9px 12px; display: flex; align-items: center;
+      justify-content: space-between; cursor: pointer;
+    }
+    .profile-card.selected { border: 2px solid #111; }
+    .profile-card .p-name { font-size: 12px; font-weight: 600; }
+    .profile-card .p-meta { font-size: 10px; color: #999; }
+    .btn-delete {
+      background: none; border: none; cursor: pointer;
+      font-size: 14px; color: #ccc; padding: 0 0 0 8px; line-height: 1;
+    }
+    .btn-delete:hover { color: #e53e3e; }
+    .measure-edit-list { display: flex; flex-direction: column; gap: 3px; }
+    .measure-edit-row {
+      display: flex; align-items: center; gap: 8px;
+      background: #fff; border: 1px solid #e5e5e5; border-radius: 6px; padding: 5px 10px;
+    }
+    .measure-edit-row label { font-size: 11px; color: #555; width: 80px; text-transform: capitalize; }
+    .measure-edit-row input {
+      width: 60px; font-size: 11px;
+      border: none; border-bottom: 1px solid #ddd; padding: 2px 4px;
+      font-family: inherit; background: transparent;
+    }
+    .measure-edit-row input:focus { outline: none; border-bottom-color: #111; }
+    .measure-edit-row .unit { font-size: 11px; color: #aaa; }
+    .add-row {
+      border: 1px dashed #ddd; border-radius: 6px; padding: 7px 10px;
+      font-size: 11px; color: #aaa; cursor: pointer; text-align: center; margin-top: 3px;
+    }
+    .add-row:hover { color: #666; border-color: #aaa; }
+    #add-measure-form {
+      display: none; background: #fff; border: 1px solid #ddd; border-radius: 6px;
+      padding: 8px 10px; margin-top: 4px; flex-direction: column; gap: 6px;
+    }
+    #add-measure-form.visible { display: flex; }
+    #add-measure-form select,
+    #add-measure-form input[type=number] {
+      font-size: 11px; border: 1px solid #ddd; border-radius: 4px;
+      padding: 4px 6px; font-family: inherit;
+    }
+    .form-row { display: flex; gap: 6px; align-items: center; }
+  </style>
 </head>
 <body>
-  <p style="padding:16px;color:#888;">FitCheck loading…</p>
+
+  <!-- Shared header -->
+  <header class="header">
+    <div class="header-left">
+      <svg class="logo-mark" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="10" cy="10" r="9" fill="none" stroke="#111" stroke-width="2"/>
+        <polyline points="5,10 8.5,13.5 15,6.5" fill="none" stroke="#111" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="wordmark">FITCHECK</span>
+    </div>
+    <div class="header-right">
+      <select id="profile-select"></select>
+      <button class="settings-btn" id="btn-settings">⚙</button>
+    </div>
+  </header>
+
+  <!-- View: Loading -->
+  <div class="view active" id="view-loading">
+    <div class="loading-body">
+      <div class="spinner"></div>
+      <span>Scanning page…</span>
+    </div>
+  </div>
+
+  <!-- View: Main -->
+  <div class="view" id="view-main">
+    <div class="verdict-banner" id="verdict-banner">
+      <span class="verdict-icon" id="verdict-icon"></span>
+      <div>
+        <div class="verdict-text" id="verdict-text"></div>
+        <div class="verdict-sub"  id="verdict-sub"></div>
+      </div>
+    </div>
+    <div class="section-label">Measurements</div>
+    <div class="measurement-grid" id="measurement-grid"></div>
+    <div class="listing-footer"   id="listing-footer"></div>
+  </div>
+
+  <!-- View: Empty -->
+  <div class="view" id="view-empty">
+    <div class="empty-body">
+      <div class="empty-message">No measurements found on this page.</div>
+      <div class="manual-section">
+        <h4>Paste listing text</h4>
+        <textarea id="paste-input" placeholder="Paste the item description here…"></textarea>
+        <div class="parse-error" id="paste-error">Couldn't find measurements in that text.</div>
+        <button class="btn" id="btn-try-parse">Try parsing</button>
+      </div>
+      <div class="manual-section">
+        <h4>Enter manually</h4>
+        <div class="manual-form" id="manual-form"></div>
+        <button class="btn" id="btn-compare-manual">Compare</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View: Settings -->
+  <div class="view" id="view-settings">
+    <div class="settings-body">
+      <div class="settings-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn-back" id="btn-back">←</button>
+          <h2>Settings</h2>
+        </div>
+        <button class="btn-new-profile" id="btn-new-profile">+ New profile</button>
+      </div>
+      <div class="section-label">Profiles</div>
+      <div class="profile-list" id="profile-list"></div>
+      <div class="section-label" id="measure-section-label" style="display:none"></div>
+      <div class="measure-edit-list" id="measure-edit-list"></div>
+      <div class="add-row" id="add-measure-row" style="display:none">+ Add measurement</div>
+      <div id="add-measure-form">
+        <div class="form-row">
+          <select id="new-key">
+            <option value="chest">chest</option>
+            <option value="waist">waist</option>
+            <option value="hips">hips</option>
+            <option value="length">length</option>
+            <option value="sleeve">sleeve</option>
+            <option value="inseam">inseam</option>
+            <option value="shoulders">shoulders</option>
+          </select>
+          <input type="number" id="new-val" min="1" max="100" step="0.5" placeholder="e.g. 38">
+          <span class="unit">"</span>
+        </div>
+        <button class="btn" id="btn-save-measure">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CANONICAL = ['chest','waist','hips','length','sleeve','inseam','shoulders'];
+
+    // ── View switching ────────────────────────────────────────────────────────
+    function showView(name) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(`view-${name}`).classList.add('active');
+    }
+
+    // ── Script continues in Tasks 8–11 ────────────────────────────────────────
+  </script>
+
 </body>
 </html>
