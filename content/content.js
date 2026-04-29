@@ -31,6 +31,4 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     itemTitle,
     site: hostname.replace('www.', ''),
   });
-
-  return true;
 });
