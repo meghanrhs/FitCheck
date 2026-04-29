@@ -300,7 +300,117 @@
       target.classList.add('active');
     }
 
-    // ── Script continues in Tasks 8–11 ────────────────────────────────────────
+    // ── State ─────────────────────────────────────────────────────────────────
+    let _lastScanResult = null;
+    let _lastView       = 'empty';
+    let _editingProfileId = null;
+
+    // ── Storage helpers ───────────────────────────────────────────────────────
+    function getStorage() {
+      return new Promise(resolve =>
+        chrome.storage.local.get(['profiles', 'activeProfileId'], resolve));
+    }
+
+    function setStorage(data) {
+      return new Promise(resolve => chrome.storage.local.set(data, resolve));
+    }
+
+    // ── Profile dropdown ──────────────────────────────────────────────────────
+    async function initProfileDropdown() {
+      const { profiles = [], activeProfileId } = await getStorage();
+      const select = document.getElementById('profile-select');
+      select.innerHTML = '';
+
+      if (profiles.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No profiles';
+        select.appendChild(opt);
+        return null;
+      }
+
+      profiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        if (p.id === activeProfileId) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      select.onchange = async () => {
+        await setStorage({ activeProfileId: select.value });
+        if (_lastScanResult) renderMain(_lastScanResult, select.value);
+      };
+
+      return activeProfileId || profiles[0]?.id || null;
+    }
+
+    // ── Settings button ───────────────────────────────────────────────────────
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      _editingProfileId = null;
+      showView('settings');
+      renderSettings();
+    });
+
+    document.getElementById('btn-back').addEventListener('click', () => {
+      showView(_lastView);
+    });
+
+    // ── Startup ───────────────────────────────────────────────────────────────
+    async function startup() {
+      showView('loading');
+
+      const activeProfileId = await initProfileDropdown();
+      const { profiles = [] } = await getStorage();
+
+      if (profiles.length === 0) {
+        showView('settings');
+        renderSettings();
+        return;
+      }
+
+      let responded = false;
+
+      const timer = setTimeout(() => {
+        if (responded) return;
+        responded = true;
+        _lastView = 'empty';
+        showView('empty');
+        initEmptyView();
+      }, 2000);
+
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        if (!tabs[0]) {
+          clearTimeout(timer);
+          if (!responded) { responded = true; _lastView = 'empty'; showView('empty'); initEmptyView(); }
+          return;
+        }
+
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'scan' }, response => {
+          if (chrome.runtime.lastError || !response) {
+            clearTimeout(timer);
+            if (!responded) { responded = true; _lastView = 'empty'; showView('empty'); initEmptyView(); }
+            return;
+          }
+
+          clearTimeout(timer);
+          if (responded) return;
+          responded = true;
+          _lastScanResult = response;
+
+          const hasMeasurements = Object.keys(response.measurements || {}).length > 0;
+          if (hasMeasurements) {
+            renderMain(response, activeProfileId);
+          } else {
+            _lastView = 'empty';
+            showView('empty');
+            initEmptyView();
+          }
+        });
+      });
+    }
+
+    startup();
   </script>
 
 </body>
