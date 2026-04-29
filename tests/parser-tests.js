@@ -106,6 +106,54 @@ function runTests() {
 
   console.groupEnd();
 
+  // ── Fit logic: per-measurement ────────────────────────────────────────────
+  console.group('Fit logic: compareMeasurement');
+
+  assert('within 1" — fit',       compareMeasurement(38, 38),   { verdict: 'fit',   label: 'FIT'   });
+  assert('0.5" diff — fit',       compareMeasurement(38, 38.5), { verdict: 'fit',   label: 'FIT'   });
+  assert('exactly 1" — fit',      compareMeasurement(38, 39),   { verdict: 'fit',   label: 'FIT'   });
+  assert('+1.5" — roomy',         compareMeasurement(38, 39.5), { verdict: 'roomy', label: 'ROOMY' });
+  assert('-1.5" — snug',          compareMeasurement(38, 36.5), { verdict: 'snug',  label: 'SNUG'  });
+  assert('+3" — big',             compareMeasurement(38, 41),   { verdict: 'big',   label: 'BIG'   });
+  assert('-3" — tight',           compareMeasurement(38, 35),   { verdict: 'tight', label: 'TIGHT' });
+
+  console.groupEnd();
+
+  // ── Fit logic: overall verdict ────────────────────────────────────────────
+  console.group('Fit logic: overallVerdict');
+
+  assert('all key measurements fit → Likely fits',
+    overallVerdict([
+      { key: 'chest', profileVal: 38, listingVal: 38 },
+      { key: 'waist', profileVal: 30, listingVal: 30 },
+      { key: 'hips',  profileVal: 40, listingVal: 40 },
+    ]).verdict, 'fits');
+
+  assert('chest >2" off → Likely won\'t fit',
+    overallVerdict([
+      { key: 'chest', profileVal: 38, listingVal: 41 },
+      { key: 'waist', profileVal: 30, listingVal: 30 },
+    ]).verdict, 'wont-fit');
+
+  assert('waist amber → Check measurements',
+    overallVerdict([
+      { key: 'chest', profileVal: 38, listingVal: 38 },
+      { key: 'waist', profileVal: 30, listingVal: 31.5 },
+    ]).verdict, 'check');
+
+  assert('fewer than 2 matched → Check measurements',
+    overallVerdict([
+      { key: 'chest', profileVal: 38, listingVal: 38 },
+    ]).verdict, 'check');
+
+  assert('no key measurements, all green → Likely fits',
+    overallVerdict([
+      { key: 'length',  profileVal: 27, listingVal: 27 },
+      { key: 'inseam',  profileVal: 30, listingVal: 30 },
+    ]).verdict, 'fits');
+
+  console.groupEnd();
+
   console.log(`\n${passed} passed, ${failed} failed`);
   return { passed, failed };
 }
