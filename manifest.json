@@ -19,9 +19,11 @@
         "*://www.ebay.com/*",
         "*://www.poshmark.com/*",
         "*://www.etsy.com/*",
-        "*://www.vinted.com/*"
+        "*://www.vinted.com/*",
+        "*://*.ebaydesc.com/*"
       ],
-      "js": ["content/sites.js", "content/parser.js", "content/content.js"]
+      "js": ["content/sites.js", "content/parser.js", "content/content.js"],
+      "all_frames": true
     }
   ],
   "icons": {
